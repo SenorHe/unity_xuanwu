@@ -1,0 +1,7 @@
+{
+  "name": "AegisFlow.Bootstrap",
+  "rootNamespace": "AegisFlow.Bootstrap",
+  "references": ["AegisFlow.Application", "AegisFlow.Command", "AegisFlow.Data", "AegisFlow.Domain", "AegisFlow.Event", "AegisFlow.Legacy", "AegisFlow.Network", "AegisFlow.Procedure", "AegisFlow.Resource", "AegisFlow.Runtime", "AegisFlow.Save", "AegisFlow.UI", "UnityGameFramework.Runtime"],
+  "autoReferenced": true,
+  "noEngineReferences": false
+}

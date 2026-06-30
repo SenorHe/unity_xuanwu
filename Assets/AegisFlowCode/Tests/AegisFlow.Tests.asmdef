@@ -1,0 +1,9 @@
+{
+  "name": "AegisFlow.Tests",
+  "rootNamespace": "AegisFlow.Tests",
+  "references": ["AegisFlow.Application", "AegisFlow.Command", "AegisFlow.Data", "AegisFlow.Domain", "AegisFlow.Event", "AegisFlow.Runtime", "AegisFlow.Save", "AegisFlow.UI"],
+  "includePlatforms": ["Editor"],
+  "optionalUnityReferences": ["TestAssemblies"],
+  "autoReferenced": false,
+  "noEngineReferences": false
+}

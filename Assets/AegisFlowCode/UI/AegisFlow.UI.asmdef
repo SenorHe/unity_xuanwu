@@ -1,0 +1,7 @@
+{
+  "name": "AegisFlow.UI",
+  "rootNamespace": "AegisFlow.UI",
+  "references": ["AegisFlow.Data", "AegisFlow.Domain", "AegisFlow.Event", "Unity.ugui"],
+  "autoReferenced": true,
+  "noEngineReferences": false
+}

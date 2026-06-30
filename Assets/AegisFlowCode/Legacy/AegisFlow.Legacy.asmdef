@@ -1,0 +1,7 @@
+{
+  "name": "AegisFlow.Legacy",
+  "rootNamespace": "AegisFlow.Legacy",
+  "references": ["AegisFlow.Data", "AegisFlow.Save"],
+  "autoReferenced": true,
+  "noEngineReferences": true
+}

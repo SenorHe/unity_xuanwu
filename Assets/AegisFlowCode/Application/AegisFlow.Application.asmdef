@@ -1,0 +1,7 @@
+{
+  "name": "AegisFlow.Application",
+  "rootNamespace": "AegisFlow.Application",
+  "references": ["AegisFlow.Data", "AegisFlow.Domain", "AegisFlow.Runtime", "AegisFlow.Save"],
+  "autoReferenced": true,
+  "noEngineReferences": true
+}

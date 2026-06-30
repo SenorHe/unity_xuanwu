@@ -1,0 +1,7 @@
+{
+  "name": "AegisFlow.Network",
+  "rootNamespace": "AegisFlow.Network",
+  "references": ["AegisFlow.Data", "AegisFlow.Event"],
+  "autoReferenced": true,
+  "noEngineReferences": false
+}

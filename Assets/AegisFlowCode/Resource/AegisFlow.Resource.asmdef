@@ -1,0 +1,7 @@
+{
+  "name": "AegisFlow.Resource",
+  "rootNamespace": "AegisFlow.Resource",
+  "references": ["UnityGameFramework.Runtime"],
+  "autoReferenced": true,
+  "noEngineReferences": false
+}

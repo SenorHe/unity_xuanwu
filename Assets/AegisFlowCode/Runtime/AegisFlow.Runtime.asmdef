@@ -1,0 +1,7 @@
+{
+  "name": "AegisFlow.Runtime",
+  "rootNamespace": "AegisFlow.Runtime",
+  "references": ["AegisFlow.Data", "AegisFlow.Event"],
+  "autoReferenced": true,
+  "noEngineReferences": false
+}

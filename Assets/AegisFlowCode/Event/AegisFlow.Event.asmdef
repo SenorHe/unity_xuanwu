@@ -1,0 +1,7 @@
+{
+  "name": "AegisFlow.Event",
+  "rootNamespace": "AegisFlow.Event",
+  "references": [],
+  "autoReferenced": true,
+  "noEngineReferences": true
+}

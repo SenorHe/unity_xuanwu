@@ -1,0 +1,7 @@
+{
+  "name": "AegisFlow.Factory",
+  "rootNamespace": "AegisFlow.Factory",
+  "references": ["AegisFlow.Data"],
+  "autoReferenced": true,
+  "noEngineReferences": false
+}

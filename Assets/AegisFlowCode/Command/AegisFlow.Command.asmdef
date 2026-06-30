@@ -1,0 +1,7 @@
+{
+  "name": "AegisFlow.Command",
+  "rootNamespace": "AegisFlow.Command",
+  "references": ["AegisFlow.Application", "AegisFlow.Data", "AegisFlow.Domain", "AegisFlow.Event"],
+  "autoReferenced": true,
+  "noEngineReferences": false
+}
