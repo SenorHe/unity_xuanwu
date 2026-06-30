@@ -12,7 +12,9 @@ namespace AegisFlow.Procedure
     public sealed class ProcedureDependencies
     {
         public SimulationDC SimulationDC { get; }
+        public TwinDC TwinDC { get; }
         public PlayerDomainService PlayerDomainService { get; }
+        public TwinDomainService TwinDomainService { get; }
         public ModelDomainService ModelDomainService { get; }
         public SimulationAppService SimulationAppService { get; }
         public SimulationModelAppService SimulationModelAppService { get; }
@@ -21,7 +23,9 @@ namespace AegisFlow.Procedure
 
         public ProcedureDependencies(
             SimulationDC simulationDC,
+            TwinDC twinDC,
             PlayerDomainService playerDomainService,
+            TwinDomainService twinDomainService,
             ModelDomainService modelDomainService,
             SimulationAppService simulationAppService,
             SimulationModelAppService simulationModelAppService,
@@ -29,7 +33,9 @@ namespace AegisFlow.Procedure
             DomainEventBus domainEventBus)
         {
             SimulationDC = simulationDC;
+            TwinDC = twinDC;
             PlayerDomainService = playerDomainService;
+            TwinDomainService = twinDomainService;
             ModelDomainService = modelDomainService;
             SimulationAppService = simulationAppService;
             SimulationModelAppService = simulationModelAppService;

@@ -33,7 +33,9 @@ namespace AegisFlow.Bootstrap
             m_ProcedureController = new ProcedureController();
             m_ProcedureDependencies = new ProcedureDependencies(
                 m_Context.SimulationDC,
+                m_Context.TwinDC,
                 m_Context.PlayerDomainService,
+                m_Context.TwinDomainService,
                 m_Context.ModelDomainService,
                 m_Context.SimulationAppService,
                 m_Context.SimulationModelAppService,

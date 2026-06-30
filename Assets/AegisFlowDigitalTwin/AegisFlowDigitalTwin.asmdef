@@ -1,0 +1,18 @@
+{
+  "name": "AegisFlowDigitalTwin",
+  "rootNamespace": "AegisFlowDigitalTwin",
+  "references": [
+    "AegisFlow.Bootstrap",
+    "AegisFlow.Data",
+    "AegisFlow.Domain",
+    "AegisFlow.Event",
+    "AegisFlow.Runtime",
+    "AegisFlow.Command",
+    "AegisFlow.UI",
+    "AegisFlow.Save",
+    "AegisFlow.Procedure",
+    "AegisFlow.Application"
+  ],
+  "autoReferenced": true,
+  "noEngineReferences": false
+}

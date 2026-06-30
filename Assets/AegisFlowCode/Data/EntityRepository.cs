@@ -9,6 +9,8 @@ namespace AegisFlow.Data
     {
         private readonly Dictionary<string, EntityData> m_EntityDic = new Dictionary<string, EntityData>();
 
+        public int Count => m_EntityDic.Count;
+
         public bool Exists(string entityId)
         {
             return !string.IsNullOrEmpty(entityId) && m_EntityDic.ContainsKey(entityId);

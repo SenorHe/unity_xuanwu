@@ -77,7 +77,13 @@ namespace AegisFlow.Save
                 {
                     entityId = entity.EntityId,
                     configId = entity.ConfigId,
-                    displayName = entity.DisplayName
+                    displayName = entity.DisplayName,
+                    posX = entity.PosX,
+                    posY = entity.PosY,
+                    posZ = entity.PosZ,
+                    rotY = entity.RotY,
+                    entityType = entity.EntityType,
+                    status = entity.Status
                 };
             }
 
@@ -99,7 +105,16 @@ namespace AegisFlow.Save
 
                 if (document != null && !string.IsNullOrEmpty(document.entityId))
                 {
-                    entities.Add(new EntityData(document.entityId, document.configId, document.displayName));
+                    entities.Add(new EntityData(
+                        document.entityId,
+                        document.configId,
+                        document.displayName,
+                        document.posX,
+                        document.posY,
+                        document.posZ,
+                        document.rotY,
+                        document.entityType,
+                        document.status));
                 }
             }
 
@@ -121,6 +136,12 @@ namespace AegisFlow.Save
             public string entityId;
             public string configId;
             public string displayName;
+            public float posX;
+            public float posY;
+            public float posZ;
+            public float rotY;
+            public string entityType;
+            public string status;
         }
     }
 }

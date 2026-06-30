@@ -10,7 +10,7 @@ namespace AegisFlow.Save
     /// </summary>
     public sealed class SimulationModelSaveData
     {
-        public const int CurrentSchemaVersion = 1;
+        public const int CurrentSchemaVersion = 2;
 
         private readonly List<EntityData> m_Entities = new List<EntityData>();
 
@@ -57,6 +57,12 @@ namespace AegisFlow.Save
                 return false;
             }
 
+            int schemaVersion = TryReadInt(json, "schemaVersion");
+            if (schemaVersion > CurrentSchemaVersion)
+            {
+                return false;
+            }
+
             string modelId = ReadValue(json, "modelId");
 
             if (string.IsNullOrEmpty(modelId))
@@ -65,7 +71,7 @@ namespace AegisFlow.Save
             }
 
             List<EntityData> entities = ParseEntities(json);
-            saveData = new SimulationModelSaveData(modelId, false, entities);
+            saveData = new SimulationModelSaveData(modelId, false, entities, schemaVersion);
             return true;
         }
 
@@ -83,7 +89,15 @@ namespace AegisFlow.Save
                     builder.Append(',');
                 }
 
-                builder.Append($"{{\"entityId\":\"{SaveJsonUtility.Escape(entityData.EntityId)}\",\"configId\":\"{SaveJsonUtility.Escape(entityData.ConfigId)}\",\"displayName\":\"{SaveJsonUtility.Escape(entityData.DisplayName)}\"}}");
+                builder.Append($"{{\"entityId\":\"{SaveJsonUtility.Escape(entityData.EntityId)}\"");
+                builder.Append($",\"configId\":\"{SaveJsonUtility.Escape(entityData.ConfigId)}\"");
+                builder.Append($",\"displayName\":\"{SaveJsonUtility.Escape(entityData.DisplayName)}\"");
+                builder.Append($",\"posX\":{entityData.PosX.ToString("F3")}");
+                builder.Append($",\"posY\":{entityData.PosY.ToString("F3")}");
+                builder.Append($",\"posZ\":{entityData.PosZ.ToString("F3")}");
+                builder.Append($",\"rotY\":{entityData.RotY.ToString("F3")}");
+                builder.Append($",\"entityType\":\"{SaveJsonUtility.Escape(entityData.EntityType)}\"");
+                builder.Append($",\"status\":\"{SaveJsonUtility.Escape(entityData.Status)}\"}}");
             }
 
             builder.Append("]}");
@@ -101,10 +115,19 @@ namespace AegisFlow.Save
                 string entityId = ReadValue(block, "entityId");
                 string configId = ReadValue(block, "configId");
                 string displayName = ReadValue(block, "displayName");
+                float posX = TryReadFloat(block, "posX");
+                float posY = TryReadFloat(block, "posY");
+                float posZ = TryReadFloat(block, "posZ");
+                float rotY = TryReadFloat(block, "rotY");
+                string entityType = ReadValue(block, "entityType");
+                string status = ReadValue(block, "status");
 
                 if (!string.IsNullOrEmpty(entityId))
                 {
-                    entities.Add(new EntityData(entityId, configId, displayName));
+                    entities.Add(new EntityData(
+                        entityId, configId, displayName,
+                        posX, posY, posZ, rotY,
+                        entityType, status));
                 }
             }
 
@@ -130,6 +153,52 @@ namespace AegisFlow.Save
             }
 
             return json.Substring(startIndex, endIndex - startIndex);
+        }
+
+        private static float TryReadFloat(string json, string key)
+        {
+            string token = $"\"{key}\":";
+            int startIndex = json.IndexOf(token, StringComparison.Ordinal);
+
+            if (startIndex < 0)
+            {
+                return 0f;
+            }
+
+            startIndex += token.Length;
+            int endIndex = startIndex;
+
+            while (endIndex < json.Length && (char.IsDigit(json[endIndex]) || json[endIndex] == '.' || json[endIndex] == '-'))
+            {
+                endIndex++;
+            }
+
+            string numberStr = json.Substring(startIndex, endIndex - startIndex);
+            float.TryParse(numberStr, out float result);
+            return result;
+        }
+
+        private static int TryReadInt(string json, string key)
+        {
+            string token = $"\"{key}\":";
+            int startIndex = json.IndexOf(token, StringComparison.Ordinal);
+
+            if (startIndex < 0)
+            {
+                return 0;
+            }
+
+            startIndex += token.Length;
+            int endIndex = startIndex;
+
+            while (endIndex < json.Length && (char.IsDigit(json[endIndex]) || json[endIndex] == '-'))
+            {
+                endIndex++;
+            }
+
+            string numberStr = json.Substring(startIndex, endIndex - startIndex);
+            int.TryParse(numberStr, out int result);
+            return result;
         }
     }
 }

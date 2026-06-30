@@ -20,6 +20,7 @@ namespace AegisFlow.Bootstrap
         public PlayerDC PlayerDC { get; private set; }
         public SimulationDC SimulationDC { get; private set; }
         public RuntimeDC RuntimeDC { get; private set; }
+        public TwinDC TwinDC { get; private set; }
         public EntityRepository EntityRepository { get; private set; }
         public ModelRepository ModelRepository { get; private set; }
         public DomainEventBus DomainEventBus { get; private set; }
@@ -27,6 +28,7 @@ namespace AegisFlow.Bootstrap
         public PlayerDomainService PlayerDomainService { get; private set; }
         public BattlePrepareDomainService BattlePrepareDomainService { get; private set; }
         public EntityDomainService EntityDomainService { get; private set; }
+        public TwinDomainService TwinDomainService { get; private set; }
         public ModelDomainService ModelDomainService { get; private set; }
         public RuntimeSnapshotService RuntimeSnapshotService { get; private set; }
         public RuntimeEventStrategyConfigLoader RuntimeEventStrategyConfigLoader { get; private set; }
@@ -66,6 +68,7 @@ namespace AegisFlow.Bootstrap
             PlayerDC = new PlayerDC();
             SimulationDC = new SimulationDC();
             RuntimeDC = new RuntimeDC();
+            TwinDC = new TwinDC();
             EntityRepository = new EntityRepository();
             ModelRepository = new ModelRepository();
             DomainEventBus = new DomainEventBus();
@@ -73,11 +76,13 @@ namespace AegisFlow.Bootstrap
             PlayerDomainService = new PlayerDomainService(PlayerDC);
             BattlePrepareDomainService = new BattlePrepareDomainService(PlayerDomainService);
             EntityDomainService = new EntityDomainService(EntityRepository);
+            TwinDomainService = new TwinDomainService(EntityRepository, ModelRepository);
             ModelDomainService = new ModelDomainService(ModelRepository);
             RuntimeSnapshotService = new RuntimeSnapshotService(EntityRepository);
             RuntimeEventStrategyConfigLoader = new RuntimeEventStrategyConfigLoader();
             RuntimeEventStrategyConfig = RuntimeEventStrategyConfigLoader.LoadDefault();
             RuntimeEventQueueBuilder = new RuntimeEventQueueBuilder();
+            RuntimeEventQueueBuilder.RegisterStrategy(new AgvRuntimeEventStrategy());
             RuntimeEventQueueBuilder.RegisterStrategy(new ConfigRuntimeEventStrategy(RuntimeEventStrategyConfig));
 
             DataProcessorRegistry = new DataProcessorRegistry();
@@ -93,6 +98,12 @@ namespace AegisFlow.Bootstrap
             SimulationEventProcessor.Register(new CreateEntityEventHandler());
             SimulationEventProcessor.Register(new ActivateEntityEventHandler());
             SimulationEventProcessor.Register(new CompleteEntityEventHandler());
+            SimulationEventProcessor.Register(new MovingEntityEventHandler());
+            SimulationEventProcessor.Register(new ArrivedEntityEventHandler());
+            SimulationEventProcessor.Register(new PickupEntityEventHandler());
+            SimulationEventProcessor.Register(new DropEntityEventHandler());
+            SimulationEventProcessor.Register(new ChargeEntityEventHandler());
+            SimulationEventProcessor.Register(new SensorScanEventHandler());
             SimulationEventQueue = new SimulationEventQueue();
             SimulationRuntimeController = new SimulationRuntimeController(RuntimeDC, SimulationEventProcessor, SimulationEventQueue, RuntimeEventQueueBuilder, DomainEventBus);
             SimulationAppService = new SimulationAppService(ModelDomainService, RuntimeSnapshotService, SimulationRuntimeController);
@@ -103,8 +114,10 @@ namespace AegisFlow.Bootstrap
             UICommandBinder = new UICommandBinder(
                 UICommandDispatcher,
                 EntityDomainService,
+                TwinDomainService,
                 SimulationModelAppService,
                 SimulationAppService,
+                TwinDC,
                 DomainEventBus);
             UICommandBinder.Bind();
             ToastPresenter = new ToastPresenter();

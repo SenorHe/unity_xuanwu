@@ -245,12 +245,14 @@ namespace AegisFlow.Tests
             UICommandBinder binder = new UICommandBinder(
                 dispatcher,
                 new EntityDomainService(entityRepository),
+                new TwinDomainService(entityRepository, modelRepository),
                 new SimulationModelAppService(
                     modelRepository,
                     entityRepository,
                     new SimulationDC(),
                     new UnitySaveJsonAdapter()),
                 simulationAppService,
+                new TwinDC(),
                 eventBus);
             UICommandExecutedEvent commandResult = null;
             eventBus.Subscribe<UICommandExecutedEvent>(eventData => commandResult = eventData);
@@ -283,10 +285,13 @@ namespace AegisFlow.Tests
         public void SaveJsonAdapter_RoundTripsEscapedValues()
         {
             UnitySaveJsonAdapter adapter = new UnitySaveJsonAdapter();
+            EntityData sourceEntity = new EntityData(
+                "entity-1", "AGV", "Line \"A\"\\North\nFloor",
+                1.5f, 0f, 3.2f, 90f, "AGV", "Placed");
             SimulationModelSaveData source = new SimulationModelSaveData(
                 "model-1",
                 false,
-                new[] { new EntityData("entity-1", "AGV", "Line \"A\"\\North\nFloor") });
+                new[] { sourceEntity });
 
             string json = adapter.ToJson(source);
             bool success = adapter.TryFromJson(json, out SimulationModelSaveData restored);
@@ -294,6 +299,9 @@ namespace AegisFlow.Tests
             Assert.IsTrue(success);
             Assert.AreEqual(SimulationModelSaveData.CurrentSchemaVersion, restored.SchemaVersion);
             Assert.AreEqual(source.Entities[0].DisplayName, restored.Entities[0].DisplayName);
+            Assert.AreEqual(source.Entities[0].PosX, restored.Entities[0].PosX);
+            Assert.AreEqual(source.Entities[0].PosZ, restored.Entities[0].PosZ);
+            Assert.AreEqual(source.Entities[0].EntityType, restored.Entities[0].EntityType);
         }
 
         [Test]

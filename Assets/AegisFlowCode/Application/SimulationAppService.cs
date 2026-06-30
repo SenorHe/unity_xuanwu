@@ -35,6 +35,11 @@ namespace AegisFlow.Application
             return true;
         }
 
+        public void StopRuntime()
+        {
+            m_RuntimeController.Stop();
+        }
+
         public bool RetryFailedEvent()
         {
             return m_RuntimeController.RetryFailedEvent();
