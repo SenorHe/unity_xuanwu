@@ -22,7 +22,7 @@ namespace AegisFlowDigitalTwin.Simulation
         private bool m_IsBound;
 
         private readonly Dictionary<string, AgvNavigator> m_Navigators = new Dictionary<string, AgvNavigator>();
-        private readonly List<string> m_PendingArrivals = new List<string>();
+        private readonly HashSet<string> m_ArrivedAgvs = new HashSet<string>();
 
         public void Initialize(AegisFlowContext context, EntityVisualRegistry visualRegistry, Transform entityRoot)
         {
@@ -65,20 +65,9 @@ namespace AegisFlowDigitalTwin.Simulation
                 return;
             }
 
-            IReadOnlyList<EntityData> entities = m_EntityRepository.GetAll() as IReadOnlyList<EntityData>;
-            if (entities == null)
+            foreach (EntityData entity in m_EntityRepository.GetAll())
             {
-                foreach (EntityData entity in m_EntityRepository.GetAll())
-                {
-                    CreateVisualForEntity(entity);
-                }
-            }
-            else
-            {
-                for (int i = 0; i < entities.Count; i++)
-                {
-                    CreateVisualForEntity(entities[i]);
-                }
+                CreateVisualForEntity(entity);
             }
         }
 
@@ -86,7 +75,7 @@ namespace AegisFlowDigitalTwin.Simulation
         {
             m_VisualRegistry?.Clear();
             m_Navigators.Clear();
-            m_PendingArrivals.Clear();
+            m_ArrivedAgvs.Clear();
         }
 
         private void CreateVisualForEntity(EntityData entity)
@@ -124,7 +113,7 @@ namespace AegisFlowDigitalTwin.Simulation
 
         private void OnSimulationEventExecuted(SimulationEventExecutedEvent evt)
         {
-            if (!evt.IsSuccess || string.IsNullOrEmpty(evt.EntityId))
+            if (evt.Status != SimulationEventExecutionStatus.Succeeded || string.IsNullOrEmpty(evt.EntityId))
             {
                 return;
             }
@@ -137,6 +126,9 @@ namespace AegisFlowDigitalTwin.Simulation
                 case "Arrived":
                     HandleArrivedEvent(evt.EntityId);
                     break;
+                case "Charging":
+                    HandleChargingEvent(evt.EntityId);
+                    break;
             }
         }
 
@@ -147,15 +139,37 @@ namespace AegisFlowDigitalTwin.Simulation
                 return;
             }
 
-            if (m_EntityRepository == null)
+            EntityData source = m_EntityRepository.Get(entityId);
+            if (source == null)
             {
                 return;
             }
 
             EntityData target = FindNearestEntity(entityId, "RACK");
+            if (target == null)
+            {
+                target = FindNearestEntity(entityId, "WORKSTATION");
+            }
+            if (target == null)
+            {
+                target = FindNearestEntity(entityId, "CHARGER");
+            }
+
             if (target != null)
             {
-                navigator.MoveTo(new Vector3(target.PosX, target.PosY, target.PosZ), target.EntityId);
+                Vector3 dest = new Vector3(target.PosX, 0f, target.PosZ);
+                navigator.MoveTo(dest, target.EntityId);
+                m_TwinDC.UpdateStatus(entityId, "Moving");
+            }
+            else
+            {
+                Vector3 wander = new Vector3(
+                    source.PosX + Random.Range(-6f, 6f),
+                    0f,
+                    source.PosZ + Random.Range(-6f, 6f));
+                wander.x = Mathf.Clamp(wander.x, -25f, 25f);
+                wander.z = Mathf.Clamp(wander.z, -25f, 25f);
+                navigator.MoveTo(wander, null);
                 m_TwinDC.UpdateStatus(entityId, "Moving");
             }
         }
@@ -169,6 +183,18 @@ namespace AegisFlowDigitalTwin.Simulation
 
             navigator.Stop();
             m_TwinDC.UpdateStatus(entityId, "Arrived");
+            m_ArrivedAgvs.Add(entityId);
+        }
+
+        private void HandleChargingEvent(string entityId)
+        {
+            if (m_TwinDC.TryGetTelemetry(entityId, out EntityTelemetry telemetry))
+            {
+                m_TwinDC.UpdateTelemetry(
+                    entityId,
+                    telemetry.PosX, telemetry.PosY, telemetry.PosZ,
+                    100f, "Charging", null, 0f);
+            }
         }
 
         private EntityData FindNearestEntity(string sourceEntityId, string entityType)
@@ -203,10 +229,10 @@ namespace AegisFlowDigitalTwin.Simulation
 
         private void Update()
         {
-            UpdateNavigatorArrivals();
+            UpdateNavigatorTelemetry();
         }
 
-        private void UpdateNavigatorArrivals()
+        private void UpdateNavigatorTelemetry()
         {
             if (m_Navigators.Count == 0)
             {
@@ -218,7 +244,7 @@ namespace AegisFlowDigitalTwin.Simulation
                 string entityId = pair.Key;
                 AgvNavigator navigator = pair.Value;
 
-                if (navigator == null || !navigator.IsMoving)
+                if (navigator == null)
                 {
                     continue;
                 }
@@ -226,19 +252,22 @@ namespace AegisFlowDigitalTwin.Simulation
                 if (m_TwinDC.TryGetTelemetry(entityId, out EntityTelemetry telemetry))
                 {
                     Vector3 pos = navigator.transform.position;
+                    float battery = telemetry.Battery;
+
+                    if (navigator.IsMoving)
+                    {
+                        battery = Mathf.Max(0f, battery - Time.deltaTime * 0.5f);
+                    }
+
+                    string status = navigator.HasArrived ? "Arrived" : (navigator.IsMoving ? "Moving" : telemetry.Status);
+
                     m_TwinDC.UpdateTelemetry(
                         entityId,
                         pos.x, pos.y, pos.z,
-                        telemetry.Battery,
-                        navigator.HasArrived ? "Arrived" : "Moving",
+                        battery,
+                        status,
                         navigator.GetTargetEntityId(),
                         navigator.Speed);
-                }
-
-                if (navigator.HasArrived && !m_PendingArrivals.Contains(entityId))
-                {
-                    m_PendingArrivals.Add(entityId);
-                    m_TwinDC.UpdateStatus(entityId, "Arrived");
                 }
             }
         }

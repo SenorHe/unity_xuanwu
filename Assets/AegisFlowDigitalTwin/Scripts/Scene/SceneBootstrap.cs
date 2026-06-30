@@ -7,16 +7,30 @@ namespace AegisFlowDigitalTwin.Scene
     /// <summary>
     /// 数字孪生场景启动器。负责初始化 AegisFlow 架构并搭建仓储环境。
     /// </summary>
+    /// <summary>
+    /// 数字孪生场景启动器。负责初始化 AegisFlow 架构并搭建仓储环境。
+    /// 注意: 如果场景中已有 DigitalTwinEntrance，不要同时挂载 AegisFlow.Bootstrap.GameEntry，
+    /// 否则会导致 AppBootstrap 被初始化两次。
+    /// </summary>
     public sealed class SceneBootstrap : MonoBehaviour
     {
         [SerializeField] private bool m_BuildEnvironmentOnStart = true;
+        [SerializeField] private bool m_IsPrimaryBootstrap = true;
 
         private AppBootstrap m_AppBootstrap;
+        private bool m_Initialized;
 
         public AegisFlowContext Context => m_AppBootstrap?.Context;
 
         private void Start()
         {
+            if (m_Initialized || !m_IsPrimaryBootstrap)
+            {
+                return;
+            }
+
+            m_Initialized = true;
+
             m_AppBootstrap = new AppBootstrap();
             m_AppBootstrap.Initialize();
 

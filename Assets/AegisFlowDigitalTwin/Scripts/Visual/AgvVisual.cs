@@ -24,7 +24,6 @@ namespace AegisFlowDigitalTwin.Visual
             float wheelY = 0.1f;
             float wheelX = 0.45f;
             float wheelZ = 0.4f;
-            CreateChild("Wheel_FL", PrimitiveType.Cylinder, new Vector3(-wheelX, wheelY, wheelZ), new Vector3(0.15f, 0.05f, 0.15f), m_WheelMat, transform);
             CreateWheelRotation(CreateChild("Wheel_FL", PrimitiveType.Cylinder, new Vector3(-wheelX, wheelY, wheelZ), new Vector3(0.15f, 0.05f, 0.15f), m_WheelMat, transform));
             CreateWheelRotation(CreateChild("Wheel_FR", PrimitiveType.Cylinder, new Vector3(wheelX, wheelY, wheelZ), new Vector3(0.15f, 0.05f, 0.15f), m_WheelMat, transform));
             CreateWheelRotation(CreateChild("Wheel_RL", PrimitiveType.Cylinder, new Vector3(-wheelX, wheelY, -wheelZ), new Vector3(0.15f, 0.05f, 0.15f), m_WheelMat, transform));

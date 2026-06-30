@@ -1,10 +1,9 @@
 using UnityEngine;
+using AegisFlow.Command;
+using AegisFlow.Data;
 
 namespace AegisFlowDigitalTwin.Editor
 {
-    /// <summary>
-    /// 编辑模式状态机。管理 Idle / Placing / Selected / Dragging 四种状态。
-    /// </summary>
     public enum EditModeState
     {
         Idle,
@@ -15,16 +14,21 @@ namespace AegisFlowDigitalTwin.Editor
 
     /// <summary>
     /// 编辑模式总控。协调放置、选择、拖拽三种操作。
+    /// 通过 UICommandDispatcher 发送命令，通过事件回调通知 UI。
     /// </summary>
     public sealed class EditModeController : MonoBehaviour
     {
         [SerializeField] private float m_GridSize = 3f;
         [SerializeField] private LayerMask m_GroundMask = 1;
         [SerializeField] private LayerMask m_EntityMask = ~0;
-        [SerializeField] private Camera m_Camera;
+
+        private Camera m_Camera;
+        private UICommandDispatcher m_Dispatcher;
+        private EntityRepository m_Repository;
+        private TwinDC m_TwinDC;
 
         private EditModeState m_State = EditModeState.Idle;
-        private string m_SelectedEntityType;
+        private string m_PendingEntityType;
         private string m_SelectedEntityId;
         private EntityPlacementController m_Placement;
         private EntitySelectionController m_Selection;
@@ -33,28 +37,49 @@ namespace AegisFlowDigitalTwin.Editor
 
         public EditModeState State => m_State;
         public string SelectedEntityId => m_SelectedEntityId;
-        public string SelectedEntityType => m_SelectedEntityType;
 
         public event System.Action<EditModeState> OnStateChanged;
-        public event System.Action<string> OnEntitySelected;
-        public event System.Action<string> OnEntityDeselected;
+        public event System.Action<string, string, string, float, float, float> OnEntitySelected;
+        public event System.Action OnEntityDeselected;
+        public event System.Action<string> OnEntityDeleted;
 
-        private void Awake()
+        public void Initialize(
+            Camera camera,
+            UICommandDispatcher dispatcher,
+            EntityRepository repository,
+            TwinDC twinDC)
         {
-            if (m_Camera == null)
-            {
-                m_Camera = UnityEngine.Camera.main;
-            }
+            m_Camera = camera;
+            m_Dispatcher = dispatcher;
+            m_Repository = repository;
+            m_TwinDC = twinDC;
 
             m_Ghost = gameObject.AddComponent<PlacementGhostVisual>();
             m_Placement = new EntityPlacementController(m_Camera, m_GridSize, m_GroundMask);
             m_Selection = new EntitySelectionController(m_Camera, m_EntityMask);
             m_Drag = new EntityDragController(m_Camera, m_GridSize, m_GroundMask);
+
+            m_Placement.OnPlaceRequested += OnPlacementRequested;
+            m_Drag.OnMoveRequested += OnMoveRequested;
+        }
+
+        private void OnPlacementRequested(string entityType, Vector3 position)
+        {
+            string entityId = $"{entityType}_{System.Guid.NewGuid():N}".Substring(0, 16);
+            m_Dispatcher.Dispatch(new PlaceEntityCommand(
+                entityType, entityId, entityType,
+                position.x, position.y, position.z, 0f));
+        }
+
+        private void OnMoveRequested(string entityId, Vector3 position)
+        {
+            m_Dispatcher.Dispatch(new MoveEntityCommand(
+                entityId, position.x, position.y, position.z, 0f));
         }
 
         public void SetPlacementType(string entityType)
         {
-            m_SelectedEntityType = entityType;
+            m_PendingEntityType = entityType;
             m_State = EditModeState.Placing;
             m_Ghost.Show(entityType);
             OnStateChanged?.Invoke(m_State);
@@ -64,7 +89,7 @@ namespace AegisFlowDigitalTwin.Editor
         {
             if (m_State == EditModeState.Placing)
             {
-                m_SelectedEntityType = null;
+                m_PendingEntityType = null;
                 m_Ghost.Hide();
                 m_State = EditModeState.Idle;
                 OnStateChanged?.Invoke(m_State);
@@ -75,7 +100,21 @@ namespace AegisFlowDigitalTwin.Editor
         {
             if (m_State == EditModeState.Selected)
             {
-                OnEntityDeselected?.Invoke(m_SelectedEntityId);
+                OnEntityDeselected?.Invoke();
+                m_SelectedEntityId = null;
+                m_State = EditModeState.Idle;
+                OnStateChanged?.Invoke(m_State);
+            }
+        }
+
+        public void DeleteSelected()
+        {
+            if (m_State == EditModeState.Selected && !string.IsNullOrEmpty(m_SelectedEntityId))
+            {
+                EntityData entity = m_Repository.Get(m_SelectedEntityId);
+                m_TwinDC.RemoveTelemetry(m_SelectedEntityId);
+                m_Dispatcher.Dispatch(new MoveEntityCommand(m_SelectedEntityId, 9999f, 9999f, 9999f, 0f));
+                OnEntityDeleted?.Invoke(m_SelectedEntityId);
                 m_SelectedEntityId = null;
                 m_State = EditModeState.Idle;
                 OnStateChanged?.Invoke(m_State);
@@ -108,11 +147,33 @@ namespace AegisFlowDigitalTwin.Editor
                 string entityId = m_Selection.PickEntity(Input.mousePosition);
                 if (entityId != null)
                 {
-                    m_SelectedEntityId = entityId;
-                    m_State = EditModeState.Selected;
-                    OnStateChanged?.Invoke(m_State);
-                    OnEntitySelected?.Invoke(entityId);
+                    SelectEntity(entityId);
                 }
+            }
+        }
+
+        private void SelectEntity(string entityId)
+        {
+            m_SelectedEntityId = entityId;
+            m_State = EditModeState.Selected;
+            OnStateChanged?.Invoke(m_State);
+
+            EntityData entity = m_Repository.Get(entityId);
+            if (entity != null)
+            {
+                float battery = 100f;
+                if (m_TwinDC.TryGetTelemetry(entityId, out EntityTelemetry telemetry))
+                {
+                    battery = telemetry.Battery;
+                }
+
+                OnEntitySelected?.Invoke(
+                    entityId,
+                    entity.EntityType,
+                    entity.Status,
+                    entity.PosX,
+                    entity.PosZ,
+                    battery);
             }
         }
 
@@ -126,9 +187,9 @@ namespace AegisFlowDigitalTwin.Editor
 
             if (Input.GetMouseButtonDown(0) && pos.HasValue)
             {
-                m_Placement.Place(m_SelectedEntityType, pos.Value);
+                m_Placement.Place(m_PendingEntityType, pos.Value);
                 m_Ghost.Hide();
-                m_SelectedEntityType = null;
+                m_PendingEntityType = null;
                 m_State = EditModeState.Idle;
                 OnStateChanged?.Invoke(m_State);
             }
@@ -151,9 +212,7 @@ namespace AegisFlowDigitalTwin.Editor
                 }
                 else if (entityId != null)
                 {
-                    OnEntityDeselected?.Invoke(m_SelectedEntityId);
-                    m_SelectedEntityId = entityId;
-                    OnEntitySelected?.Invoke(entityId);
+                    SelectEntity(entityId);
                 }
                 else
                 {
@@ -163,13 +222,7 @@ namespace AegisFlowDigitalTwin.Editor
 
             if (Input.GetKeyDown(KeyCode.Delete) || Input.GetKeyDown(KeyCode.Backspace))
             {
-                if (m_SelectedEntityId != null)
-                {
-                    OnEntityDeselected?.Invoke(m_SelectedEntityId);
-                    m_SelectedEntityId = null;
-                    m_State = EditModeState.Idle;
-                    OnStateChanged?.Invoke(m_State);
-                }
+                DeleteSelected();
             }
         }
 
@@ -185,6 +238,23 @@ namespace AegisFlowDigitalTwin.Editor
             {
                 m_State = EditModeState.Selected;
                 OnStateChanged?.Invoke(m_State);
+
+                EntityData entity = m_Repository.Get(m_SelectedEntityId);
+                if (entity != null)
+                {
+                    float battery = 100f;
+                    if (m_TwinDC.TryGetTelemetry(m_SelectedEntityId, out EntityTelemetry telemetry))
+                    {
+                        battery = telemetry.Battery;
+                    }
+                    OnEntitySelected?.Invoke(
+                        m_SelectedEntityId,
+                        entity.EntityType,
+                        entity.Status,
+                        entity.PosX,
+                        entity.PosZ,
+                        battery);
+                }
             }
         }
     }

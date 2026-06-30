@@ -1,16 +1,23 @@
 using UnityEngine;
 using UnityEngine.UI;
+using AegisFlow.Command;
 
 namespace AegisFlowDigitalTwin.UI
 {
     /// <summary>
-    /// 顶部工具栏。包含放置、保存、加载、运行、停止按钮。
+    /// 顶部工具栏。实体按钮进入交互放置模式，Save/Load/Run 使用当前 ModelId。
     /// </summary>
     public sealed class ToolbarUI : MonoBehaviour
     {
-        private AegisFlow.Command.UICommandDispatcher m_Dispatcher;
+        private UICommandDispatcher m_Dispatcher;
+        private Editor.EditModeController m_EditMode;
+        private Data.SimulationDC m_SimDC;
 
-        public static ToolbarUI Create(Transform parent, AegisFlow.Command.UICommandDispatcher dispatcher)
+        public static ToolbarUI Create(
+            Transform parent,
+            UICommandDispatcher dispatcher,
+            Editor.EditModeController editMode,
+            Data.SimulationDC simDC)
         {
             GameObject obj = new GameObject("Toolbar");
             obj.transform.SetParent(parent, false);
@@ -32,36 +39,68 @@ namespace AegisFlowDigitalTwin.UI
 
             ToolbarUI toolbar = obj.AddComponent<ToolbarUI>();
             toolbar.m_Dispatcher = dispatcher;
+            toolbar.m_EditMode = editMode;
+            toolbar.m_SimDC = simDC;
             toolbar.CreateButtons();
-
             return toolbar;
         }
 
         private void CreateButtons()
         {
-            CreateButton("AGV", () => SelectEntityType("AGV"), new Color(0.15f, 0.45f, 0.85f));
-            CreateButton("RACK", () => SelectEntityType("RACK"), new Color(0.85f, 0.45f, 0.1f));
-            CreateButton("CHARGER", () => SelectEntityType("CHARGER"), new Color(0.1f, 0.6f, 0.3f));
-            CreateButton("CONVEYOR", () => SelectEntityType("CONVEYOR"), new Color(0.4f, 0.4f, 0.42f));
-            CreateButton("WORKSTATION", () => SelectEntityType("WORKSTATION"), new Color(0.4f, 0.2f, 0.6f));
-            CreateButton("SENSOR", () => SelectEntityType("SENSOR"), new Color(0.1f, 0.6f, 0.7f));
+            CreateEntityButton("AGV", "AGV 搬运车", new Color(0.15f, 0.45f, 0.85f));
+            CreateEntityButton("RACK", "货架", new Color(0.85f, 0.45f, 0.1f));
+            CreateEntityButton("CHARGER", "充电站", new Color(0.1f, 0.6f, 0.3f));
+            CreateEntityButton("CONVEYOR", "传送带", new Color(0.4f, 0.4f, 0.42f));
+            CreateEntityButton("WORKSTATION", "工作站", new Color(0.4f, 0.2f, 0.6f));
+            CreateEntityButton("SENSOR", "传感器", new Color(0.1f, 0.6f, 0.7f));
 
             CreateSpacer(20f);
 
-            CreateButton("Save", () => m_Dispatcher.Dispatch(new AegisFlow.Command.SaveModelCommand()), new Color(0.2f, 0.5f, 0.2f));
-            CreateButton("Load", () => m_Dispatcher.Dispatch(new AegisFlow.Command.LoadModelCommand("default")), new Color(0.2f, 0.4f, 0.5f));
-            CreateButton("Run", () => m_Dispatcher.Dispatch(new AegisFlow.Command.StartSimulationCommand("default")), new Color(0.1f, 0.6f, 0.1f));
-            CreateButton("Stop", () => m_Dispatcher.Dispatch(new AegisFlow.Command.StopSimulationCommand()), new Color(0.6f, 0.1f, 0.1f));
+            CreateActionButton("Save", () =>
+            {
+                string modelId = GetCurrentModelId();
+                m_Dispatcher.Dispatch(new SaveModelCommand());
+            }, new Color(0.2f, 0.5f, 0.2f));
+
+            CreateActionButton("Load", () =>
+            {
+                string modelId = GetCurrentModelId();
+                m_Dispatcher.Dispatch(new LoadModelCommand(modelId));
+            }, new Color(0.2f, 0.4f, 0.5f));
+
+            CreateActionButton("Run", () =>
+            {
+                string modelId = GetCurrentModelId();
+                m_Dispatcher.Dispatch(new StartSimulationCommand(modelId));
+            }, new Color(0.1f, 0.6f, 0.1f));
+
+            CreateActionButton("Stop", () =>
+            {
+                m_Dispatcher.Dispatch(new StopSimulationCommand());
+            }, new Color(0.6f, 0.1f, 0.1f));
         }
 
-        private void SelectEntityType(string type)
+        private string GetCurrentModelId()
         {
-            string entityId = $"{type}_{System.Guid.NewGuid():N}".Substring(0, 12);
-            m_Dispatcher.Dispatch(new AegisFlow.Command.PlaceEntityCommand(
-                type, entityId, type, 0f, 0f, 0f, 0f));
+            if (m_SimDC != null && !string.IsNullOrEmpty(m_SimDC.CurrentModelId))
+            {
+                return m_SimDC.CurrentModelId;
+            }
+            return "default";
         }
 
-        private void CreateButton(string label, UnityEngine.Events.UnityAction onClick, Color color)
+        private void CreateEntityButton(string type, string displayName, Color color)
+        {
+            CreateActionButton(displayName, () =>
+            {
+                if (m_EditMode != null)
+                {
+                    m_EditMode.SetPlacementType(type);
+                }
+            }, color);
+        }
+
+        private void CreateActionButton(string label, UnityEngine.Events.UnityAction onClick, Color color)
         {
             GameObject btnObj = new GameObject($"Btn_{label}");
             btnObj.transform.SetParent(transform, false);
